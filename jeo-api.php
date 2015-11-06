@@ -16,17 +16,8 @@ if(!class_exists('JEO_API_Plugin')) {
     public function __construct() {
 
       add_action('after_setup_theme', array($this, 'reset_api'), 100);
+      add_action('init', array($this, 'init'));
 
-      if($this->is_enabled()) {
-        add_rewrite_endpoint('geojson', EP_ALL);
-        add_filter('query_vars', array($this, 'query_var'));
-        add_filter('jeo_markers_geojson', array($this, 'jsonp_callback'));
-        add_filter('jeo_markers_data', array($this, 'filter_markers'), 10, 2);
-        add_filter('jeo_geojson_content_type', array($this, 'content_type'));
-        add_action('jeo_markers_before_print', array($this, 'headers'));
-        add_action('pre_get_posts', array($this, 'pre_get_posts'));
-        add_action('template_redirect', array($this, 'template_redirect'));
-      }
 
     }
 
@@ -62,9 +53,33 @@ if(!class_exists('JEO_API_Plugin')) {
     }
 
     function is_enabled() {
-      // $options = jeo_get_options();
-      // return ($options && isset($options['api']) && $options['api']['enable']);
-      return false;
+      if($this->options && $this->options['enabled'])
+        return true;
+      else
+        return false;
+    }
+
+    function init() {
+
+      $this->options = get_jeo_api_options();
+
+      if($this->is_enabled()) {
+
+        add_rewrite_endpoint('geojson', EP_ALL);
+
+        add_filter('query_vars', array($this, 'query_var'));
+        add_filter('jeo_markers_geojson', array($this, 'jsonp_callback'));
+        add_filter('jeo_markers_geojson_key', array($this, 'geojson_key'));
+        add_filter('jeo_markers_geojson_keys', array($this, 'geojson_keys'));
+        add_filter('jeo_markers_cache_key', array($this, 'cache_key'));
+        add_filter('jeo_geojson_content_type', array($this, 'content_type'));
+        add_action('jeo_markers_before_print', array($this, 'headers'));
+        add_action('pre_get_posts', array($this, 'pre_get_posts'));
+        add_filter('jeo_marker_data', array($this,'marker_data'), 200);
+        add_action('template_redirect', array($this, 'template_redirect'));
+
+      }
+
     }
 
     function get_options() {
@@ -80,31 +95,106 @@ if(!class_exists('JEO_API_Plugin')) {
       return $vars;
     }
 
-    function filter_markers($data, $query) {
-      if(isset($query->query['geojson'])) {
-        $features_with_geometry = array();
-        foreach($data['features'] as $feature) {
-          if(isset($feature['geometry']))
-          $features_with_geometry[] = $feature;
-        }
-        $data['features'] = $features_with_geometry;
-      }
-      return $data;
-    }
-
     function pre_get_posts($query) {
       if(isset($query->query['geojson'])) {
+        if(!$query->get('map'))
+          $query->set('without_map_query', true);
         $query->set('offset', null);
         $query->set('nopaging', null);
         $query->set('paged', (get_query_var('paged')) ? get_query_var('paged') : 1);
+        $query->set('meta_query', array(
+          array(
+            'key' => 'geocode_latitude',
+            'value' => '',
+            'compare' => '!='
+          )
+        ));
+        // must filter geometry here
       }
+    }
+
+    function geojson_key($key) {
+      global $wp_query;
+      if(isset($wp_query->query['geojson'])) {
+        $key = '_jeo_api';
+      }
+      return $key;
+    }
+
+    function geojson_keys($keys) {
+      $keys[] = '_jeo_api';
+      return $keys;
+    }
+
+    function cache_key($key) {
+      global $wp_query;
+      if(isset($wp_query->query['geojson'])) {
+        $key .= '_jeo_api';
+      }
+      return $key;
+    }
+
+    function marker_data($properties) {
+      global $wp_query;
+      if(isset($wp_query->query['geojson'])) {
+        // unset unwanted properties
+        unset($properties['postID']);
+        unset($properties['class']);
+        unset($properties['marker']);
+        unset($properties['id']);
+        unset($properties['range_slider_property']);
+        unset($properties['bubble']);
+        // set new properties
+        $properties['id'] = get_the_ID();
+        $properties['date'] = get_the_date('c');
+        $properties['excerpt'] = get_the_excerpt();
+        if($this->options && $this->options['taxonomy'])
+          $properties['taxonomy'] = $this->taxonomy_data();
+        if(has_post_thumbnail()) {
+          $thumb = wp_get_attachment_image_src(get_post_thumbnail_id(), 'large');
+          $full = wp_get_attachment_image_src(get_post_thumbnail_id(), 'full');
+          $properties['thumbnail'] = array(
+            'width' => $thumb[1],
+            'height' => $thumb[2],
+            'url' => $thumb[0],
+            'full' => $full[0]
+          );
+        }
+      }
+      return $properties;
+    }
+
+    function taxonomy_data() {
+      global $post;
+      $options = get_jeo_api_options();
+      $taxonomies = $options['taxonomies'];
+      $post_tax_terms = array();
+      foreach($taxonomies as $tax) {
+        $terms = wp_get_post_terms($post->ID, $tax);
+        if($terms) {
+          $tax_terms = array(
+            'name' => $tax,
+            'terms' => array()
+          );
+          foreach($terms as $term) {
+            $tax_terms['terms'][] = array(
+              'id' => $term->term_id,
+              'slug' => $term->slug,
+              'name' => $term->name
+            );
+          }
+          $post_tax_terms[] = $tax_terms;
+        }
+      }
+      return $post_tax_terms;
     }
 
     function template_redirect() {
       global $wp_query;
+      global $jeo_markers;
       if(isset($wp_query->query['geojson'])) {
-        $query = $this->query();
-        $this->get_data(apply_filters('jeo_geojson_api_query', $query));
+        $query = $jeo_markers->query();
+        $jeo_markers->get_data(apply_filters('jeo_geojson_api_query', $query));
         exit;
       }
     }
