@@ -147,7 +147,7 @@ if(!class_exists('JEO_API_Plugin')) {
         $properties['id'] = get_the_ID();
         $properties['date'] = get_the_date('c');
         $properties['excerpt'] = get_the_excerpt();
-        if($this->options && in_array('taxonomies', $this->options['fields']))
+        if($this->options && in_array('taxonomy', $this->options['fields']))
           $properties['taxonomy'] = $this->taxonomy_data();
         if(has_post_thumbnail() && $this->options['fields'] && in_array('thumbnail', $this->options['fields'])) {
           $thumb = wp_get_attachment_image_src(get_post_thumbnail_id(), 'large');
