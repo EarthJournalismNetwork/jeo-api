@@ -47,6 +47,9 @@ You might help us with that. [Ask as something](https://github.com/ecodigital/je
 
 == Changelog ==
 
+= 0.0.2 =
+* Fix CORS
+
 = 0.0.1 =
 * First release
 
