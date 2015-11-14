@@ -3,7 +3,7 @@
 Plugin Name: JEO API
 Plugin URI: http://jeowp.org/jeo-api
 Description: Plug a GeoJSON API into your JEO project
-Version: 0.0.1
+Version: 0.0.2
 Author: Miguel Peixe
 Author URI: http://jeowp.org/
 License: MIT
@@ -220,6 +220,8 @@ if(!class_exists('JEO_API_Plugin')) {
       if(isset($wp_query->query['geojson'])) {
         header('X-Total-Count: ' . $wp_query->found_posts);
         header('Access-Control-Allow-Origin: *');
+        header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+        header('Access-Control-Max-Age: 1000');
         if(isset($_GET['download'])) {
           $filename = apply_filters('jeo_geojson_filename', sanitize_title(get_bloginfo('name') . ' ' . wp_title(null, false)));
           header('Content-Disposition: attachment; filename="' . $filename . '.geojson"');
