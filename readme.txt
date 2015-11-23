@@ -4,7 +4,7 @@ Donate link: http://jeowp.org/
 Tags: jeo, geojson, api
 Requires at least: 4.0
 Tested up to: 4.3.1
-Stable tag: 0.0.2
+Stable tag: 0.0.3
 License: MIT
 License URI: http://mit-license.org/
 
@@ -46,6 +46,9 @@ You might help us with that. [Ask as something](https://github.com/ecodigital/je
 == Screenshots ==
 
 == Changelog ==
+
+= 0.0.3 =
+* Support `date_query` with `from` and `to` parameters (must be an ISO 8601 string)
 
 = 0.0.2 =
 * Fix CORS

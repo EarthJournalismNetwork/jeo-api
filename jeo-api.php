@@ -3,7 +3,7 @@
 Plugin Name: JEO API
 Plugin URI: http://jeowp.org/jeo-api
 Description: Plug a GeoJSON API into your JEO project
-Version: 0.0.2
+Version: 0.0.3
 Author: Miguel Peixe
 Author URI: http://jeowp.org/
 License: MIT
@@ -92,6 +92,8 @@ if(!class_exists('JEO_API_Plugin')) {
     function query_var($vars) {
       $vars[] = 'geojson';
       $vars[] = 'download';
+      $vars[] = 'from';
+      $vars[] = 'to';
       return $vars;
     }
 
@@ -109,6 +111,17 @@ if(!class_exists('JEO_API_Plugin')) {
             'compare' => '!='
           )
         ));
+        if($query->get('from')) {
+          $date_query = array(
+            array(
+              'after' => str_replace(' ', '+', $query->get('from'))
+            )
+          );
+          if($query->get('to')) {
+            $date_query[0]['before'] = str_replace(' ', '+', $query->get('to'));
+          }
+          $query->set('date_query', $date_query);
+        }
       }
     }
 
@@ -147,23 +160,17 @@ if(!class_exists('JEO_API_Plugin')) {
         $properties['id'] = get_the_ID();
         $properties['date'] = get_the_date('c');
         $properties['excerpt'] = get_the_excerpt();
-        if($this->options['fields'] && in_array('taxonomy', $this->options['fields']))
-          $properties['taxonomy'] = $this->taxonomy_data();
+        if($this->options['fields'] && in_array('taxonomy', $this->options['fields'])) {
+          $properties['taxonomy'] = $this->get_taxonomy_data();
+        }
         if($this->options['fields'] && in_array('thumbnail', $this->options['fields']) && has_post_thumbnail()) {
-          $thumb = wp_get_attachment_image_src(get_post_thumbnail_id(), 'large');
-          $full = wp_get_attachment_image_src(get_post_thumbnail_id(), 'full');
-          $properties['thumbnail'] = array(
-            'width' => $thumb[1],
-            'height' => $thumb[2],
-            'url' => $thumb[0],
-            'full' => $full[0]
-          );
+          $properties['thumbnail'] = $this->get_thumbnail_data();
         }
       }
       return $properties;
     }
 
-    function taxonomy_data() {
+    function get_taxonomy_data() {
       global $post;
       $options = get_jeo_api_options();
       $taxonomies = $options['taxonomies'];
@@ -186,6 +193,18 @@ if(!class_exists('JEO_API_Plugin')) {
         }
       }
       return $post_tax_terms;
+    }
+
+    function get_thumbnail_data() {
+      global $post;
+      $thumb = wp_get_attachment_image_src(get_post_thumbnail_id(), 'large');
+      $full = wp_get_attachment_image_src(get_post_thumbnail_id(), 'full');
+      return array(
+        'width' => $thumb[1],
+        'height' => $thumb[2],
+        'url' => $thumb[0],
+        'full' => $full[0]
+      );
     }
 
     function template_redirect() {
