@@ -202,5 +202,7 @@ if(class_exists('JEO_API_Plugin_Settings')) {
 
 function get_jeo_api_options() {
   global $jeo_api_plugin_settings;
-  return $jeo_api_plugin_settings->get_options();
+  if ($jeo_api_plugin_settings !== NULL) {
+    return $jeo_api_plugin_settings->get_options();
+  }
 }
